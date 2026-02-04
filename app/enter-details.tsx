@@ -1,64 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, Modal, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../constants/Colors';
-import { Ionicons, Feather } from '@expo/vector-icons';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function EnterDetailsScreen() {
   const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [gender, setGender] = useState('');
-  const [dob, setDob] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [age, setAge] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-  
-  // Temporary state for iOS picker to allow "Cancel" functionality without committing changes immediately
-  const [tempDate, setTempDate] = useState<Date>(new Date());
 
-  const isFormValid = fullName && gender && dob && email && address;
-
-  const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-        setShowDatePicker(false);
-        if (event.type === 'set' && selectedDate) {
-            setDob(selectedDate);
-        }
-    } else {
-        // iOS: Update temp state only, wait for "Done" to commit
-        if (selectedDate) {
-            setTempDate(selectedDate);
-        }
-    }
-  };
-
-  const openDatePicker = () => {
-    // Initialize tempDate with current dob or today so the picker starts at the right place
-    setTempDate(dob || new Date());
-    setShowDatePicker(true);
-  };
-
-  const confirmIOSDate = () => {
-    setDob(tempDate);
-    setShowDatePicker(false);
-  };
-
-  const cancelIOSDate = () => {
-    setShowDatePicker(false);
-  };
-
-  const formatDate = (date: Date) => {
-    // US Format: Month Day, Year (e.g., January 1, 2000)
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
+  // Validation: Check if all fields are filled and age is a valid positive number
+  const isFormValid = fullName && gender && age && email && address && !isNaN(Number(age)) && Number(age) > 0;
 
   const handleContinue = () => {
     if (isFormValid) {
+      // Navigate to onboarding with age data included in context/params if needed
       router.push('/onboarding');
     }
   };
@@ -107,18 +66,23 @@ export default function EnterDetailsScreen() {
             </View>
         </View>
 
-        {/* Date of Birth */}
+        {/* Age Input */}
         <View style={styles.inputGroup}>
-            <Text style={styles.label}>Date of Birth</Text>
-            <TouchableOpacity 
-                style={styles.dateInput} 
-                onPress={openDatePicker}
-            >
-                <Text style={[styles.inputText, !dob && { color: '#999' }]}>
-                    {dob ? formatDate(dob) : 'Select Date of Birth'}
-                </Text>
-                <Feather name="calendar" size={20} color="#666" />
-            </TouchableOpacity>
+            <Text style={styles.label}>Enter your age</Text>
+            <TextInput 
+                style={styles.input}
+                placeholder="Age"
+                placeholderTextColor="#999"
+                value={age}
+                onChangeText={(text) => {
+                    // Only allow numeric input
+                    if (/^\d*$/.test(text)) {
+                        setAge(text);
+                    }
+                }}
+                keyboardType="number-pad"
+                maxLength={3}
+            />
         </View>
 
         {/* Email */}
@@ -164,50 +128,6 @@ export default function EnterDetailsScreen() {
             <Text style={styles.primaryButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Date Picker Modal (iOS Custom Bottom Sheet style) */}
-      {Platform.OS === 'ios' && (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={showDatePicker}
-            onRequestClose={cancelIOSDate}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <TouchableOpacity onPress={cancelIOSDate}>
-                            <Text style={styles.modalCancel}>Cancel</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.modalTitle}>Select Date</Text>
-                        <TouchableOpacity onPress={confirmIOSDate}>
-                            <Text style={styles.modalDone}>Done</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <DateTimePicker
-                        value={tempDate}
-                        mode="date"
-                        display="spinner"
-                        onChange={handleDateChange}
-                        textColor="black"
-                        maximumDate={new Date()}
-                        themeVariant="light"
-                    />
-                </View>
-            </View>
-        </Modal>
-      )}
-
-      {/* Android Date Picker (Native Dialog) */}
-      {Platform.OS === 'android' && showDatePicker && (
-        <DateTimePicker
-            value={dob || new Date()}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-            maximumDate={new Date()}
-        />
-      )}
     </View>
   );
 }
@@ -271,22 +191,6 @@ const styles = StyleSheet.create({
     height: 100,
     paddingTop: 16,
   },
-  inputText: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 16,
-    color: Colors.black,
-  },
-  dateInput: {
-    height: 52,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#FAFAFA',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   genderContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -345,39 +249,5 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_500Medium',
     fontSize: 18,
     color: Colors.white,
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 40,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  modalTitle: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: 16,
-  },
-  modalCancel: {
-    fontFamily: 'DMSans_500Medium',
-    color: '#666',
-    fontSize: 16,
-  },
-  modalDone: {
-    fontFamily: 'DMSans_500Medium',
-    color: Colors.primary,
-    fontSize: 16,
   },
 });
